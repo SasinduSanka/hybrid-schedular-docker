@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  inspector:
+    image: hybrid-inspector:local
+    container_name: hybrid_clean_env
+    
+    privileged: true
+    
+    stdin_open: true 
+    tty: true        
+    
+    volumes:
+      - .:/app
+      - /dev/hugepages:/dev/hugepages
+      - /sys/bus/pci/drivers:/sys/bus/pci/drivers
+      - /lib/modules:/lib/modules
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    command: /bin/bash
