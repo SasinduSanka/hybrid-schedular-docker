@@ -1,4 +1,3 @@
-cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.10)
 project(HybridPacketInspector LANGUAGES CXX CUDA)
 
@@ -22,14 +21,14 @@ endif()
 
 # CUDA
 find_package(CUDAToolkit REQUIRED)
-# target architecture 86 for rtx 3090
 set(CMAKE_CUDA_ARCHITECTURES 86) 
 
-# Executables
+# Executables (ADDED cpu_worker.cpp HERE)
 add_executable(inspector 
     main.cpp 
     pcap_reader.cpp 
     scheduler.cpp 
+    cpu_worker.cpp
     gpu_worker.cu 
 )
 
@@ -47,4 +46,3 @@ target_include_directories(inspector PUBLIC
     ${PCAP_INCLUDE_DIRS}
     ${HYPERSCAN_INCLUDE_DIR}
 )
-EOF
