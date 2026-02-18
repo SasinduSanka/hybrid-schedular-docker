@@ -8,16 +8,16 @@ RUN apt-get update && apt-get install -y \
     git \
     pkg-config \
     python3 \
-    libnuma-dev \
-    pciutils \
     vim \
-    libhyperscan-dev \
-    dpdk \
-    dpdk-dev \
-    libdpdk-dev \
     libpcap-dev \
+    libhyperscan-dev \
     && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
+
+COPY . /app
+
+RUN rm -rf build && mkdir build && cd build && \
+    cmake .. && \
+    make
 
 CMD ["/bin/bash"]
