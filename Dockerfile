@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     libpcap-dev \
     libhyperscan-dev \
     && rm -rf /var/lib/apt/lists/*
-    
+
 WORKDIR /app
 
 COPY . /app
@@ -20,7 +20,7 @@ COPY . /app
 RUN rm -rf build CMakeCache.txt CMakeFiles && \
     mkdir build && \
     cd build && \
-    cmake .. && \
+    cmake -DCMAKE_CUDA_ARCHITECTURES=86 .. && \
     make
 
 CMD ["/bin/bash"]
