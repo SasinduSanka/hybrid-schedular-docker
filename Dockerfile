@@ -16,7 +16,9 @@ WORKDIR /app
 
 COPY . /app
 
-RUN rm -rf build && mkdir build && cd build && \
+RUN rm -rf build CMakeCache.txt CMakeFiles && \
+    mkdir build && \
+    cd build && \
     cmake .. && \
     make
 
