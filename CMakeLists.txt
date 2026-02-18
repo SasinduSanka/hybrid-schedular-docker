@@ -1,35 +1,41 @@
 cmake_minimum_required(VERSION 3.10)
-project(HybridPacketInspector)
+project(HybridPacketInspector LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(DPDK REQUIRED libdpdk)
+
+pkg_check_modules(PCAP REQUIRED libpcap)
 
 find_path(HYPERSCAN_INCLUDE_DIR hs/hs.h)
 find_library(HYPERSCAN_LIBRARY NAMES hs hyperscan)
-
 if(NOT HYPERSCAN_LIBRARY)
     message(FATAL_ERROR "Hyperscan library not found! Ensure libhyperscan-dev is installed.")
 endif()
 
-enable_language(CUDA)
-set(CMAKE_CUDA_ARCHITECTURES 75)
 find_package(CUDAToolkit REQUIRED)
 
-add_executable(inspector main.cpp gpu_worker.cu cpu_worker.cpp scheduler.cpp)
+set(CMAKE_CUDA_ARCHITECTURES native) 
+
+add_executable(inspector 
+    main.cpp 
+    pcap_reader.cpp 
+    scheduler.cpp 
+    gpu_worker.cu 
+)
 
 target_link_libraries(inspector
     PRIVATE
-    ${DPDK_LIBRARIES}
+    ${PCAP_LIBRARIES}
     ${HYPERSCAN_LIBRARY}
-    pcap
-    CUDA::cudart 
+    CUDA::cudart
+    pthread
 )
 
 target_include_directories(inspector PUBLIC
-    ${DPDK_INCLUDE_DIRS}
+    ${PCAP_INCLUDE_DIRS}
     ${HYPERSCAN_INCLUDE_DIR}
 )
