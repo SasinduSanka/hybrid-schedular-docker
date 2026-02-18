@@ -1,3 +1,4 @@
+cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.10)
 project(HybridPacketInspector LANGUAGES CXX CUDA)
 
@@ -6,20 +7,25 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
 
+# Dependencies
 find_package(PkgConfig REQUIRED)
 
+# Libpcap
 pkg_check_modules(PCAP REQUIRED libpcap)
 
+# Hyperscan
 find_path(HYPERSCAN_INCLUDE_DIR hs/hs.h)
 find_library(HYPERSCAN_LIBRARY NAMES hs hyperscan)
 if(NOT HYPERSCAN_LIBRARY)
     message(FATAL_ERROR "Hyperscan library not found! Ensure libhyperscan-dev is installed.")
 endif()
 
+# CUDA
 find_package(CUDAToolkit REQUIRED)
+# target architecture 86 for rtx 3090
+set(CMAKE_CUDA_ARCHITECTURES 86) 
 
-set(CMAKE_CUDA_ARCHITECTURES native) 
-
+# Executables
 add_executable(inspector 
     main.cpp 
     pcap_reader.cpp 
@@ -27,6 +33,7 @@ add_executable(inspector
     gpu_worker.cu 
 )
 
+# Link Libraries
 target_link_libraries(inspector
     PRIVATE
     ${PCAP_LIBRARIES}
@@ -35,7 +42,9 @@ target_link_libraries(inspector
     pthread
 )
 
+# Include Directories
 target_include_directories(inspector PUBLIC
     ${PCAP_INCLUDE_DIRS}
     ${HYPERSCAN_INCLUDE_DIR}
 )
+EOF
