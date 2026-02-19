@@ -49,6 +49,7 @@ int main(int argc, char** argv) {
     }
     
     reader.close();
+    scheduler.flush_batch();
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
