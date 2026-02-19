@@ -14,7 +14,7 @@ void Scheduler::init() {
 
 void Scheduler::dispatch(char* packet_data, int packet_len) {
     
-    if (packet_len >= GPU_THRESHOLD) {
+    if (packet_len >= 50) {
         
         int current_offset = batch_flat_buffer.size();
         
