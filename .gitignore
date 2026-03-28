@@ -1,0 +1,44 @@
+# =========================
+# Build & CMake Artifacts
+# =========================
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# =========================
+# Compiled Binaries
+# =========================
+*.o
+*.obj
+*.so
+*.a
+*.out
+# The main project executable
+inspector
+
+# =========================
+# IDE & Editor Configurations
+# =========================
+.idea/
+.vscode/
+*.iml
+
+# =========================
+# System Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Datasets & Network Traces
+# =========================
+# Ignore all large packet capture files by default
+*.pcap
+*.pcapng
+*.cap
+
+# Exception: Allow the tiny sample file to be tracked
+!benchmark_sample.pcap
