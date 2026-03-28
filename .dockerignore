@@ -1,0 +1,4 @@
+cat > .dockerignore << 'EOF'
+*.pcap
+*.pcap.gz
+EOF
