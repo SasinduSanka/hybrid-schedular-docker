@@ -2,12 +2,14 @@
 #include <iostream>
 #include "gpu_worker.h"
 
+// CUDA Kernel: Each block processes one packet.
+// Threads within the block cooperatively scan the payload in parallel to maximize throughput.
 __global__ void batch_scan_kernel(char* all_data, int* offsets, int* lengths, int* results) {
-    int packet_idx = blockIdx.x; 
-    
+    int packet_idx = blockIdx.x;
+
     int my_start = offsets[packet_idx];
     int my_len = lengths[packet_idx];
-    
+
     char* my_packet = &all_data[my_start];
 
     for (int i = threadIdx.x; i < my_len; i += blockDim.x) {
@@ -17,41 +19,84 @@ __global__ void batch_scan_kernel(char* all_data, int* offsets, int* lengths, in
     }
 }
 
-extern "C" void launch_gpu_batch(char* h_buffer, int* h_offsets, int* h_lengths, int num_packets) {
-    if (num_packets == 0) return;
+// Allocate persistent VRAM upfront to avoid the massive latency overhead
+// of calling cudaMalloc on every single batch.
+GPUWorker::GPUWorker(int batch_capacity, size_t max_bytes_per_batch) {
+    this->max_batch_packets = batch_capacity;
+    this->max_total_bytes = max_bytes_per_batch;
+    this->current_stream_idx = 0;
 
-    int total_bytes = h_offsets[num_packets - 1] + h_lengths[num_packets - 1];
+    cudaMalloc((void**)&d_flat_buffer, max_total_bytes * NUM_STREAMS);
+    cudaMalloc((void**)&d_offsets, max_batch_packets * NUM_STREAMS * sizeof(int));
+    cudaMalloc((void**)&d_lengths, max_batch_packets * NUM_STREAMS * sizeof(int));
+    cudaMalloc((void**)&d_results, max_batch_packets * NUM_STREAMS * sizeof(int));
 
-    char* d_buffer;
-    int *d_offsets, *d_lengths, *d_results;
-    int* h_results = new int[num_packets];
-
-    cudaMalloc((void**)&d_buffer, total_bytes);
-    cudaMalloc((void**)&d_offsets, num_packets * sizeof(int));
-    cudaMalloc((void**)&d_lengths, num_packets * sizeof(int));
-    cudaMalloc((void**)&d_results, num_packets * sizeof(int));
-
-    cudaMemcpy(d_buffer, h_buffer, total_bytes, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_offsets, h_offsets, num_packets * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_lengths, h_lengths, num_packets * sizeof(int), cudaMemcpyHostToDevice);
-    
-    cudaMemset(d_results, 0, num_packets * sizeof(int));
-
-    batch_scan_kernel<<<num_packets, 256>>>(d_buffer, d_offsets, d_lengths, d_results);
-    
-    cudaDeviceSynchronize();
-
-    cudaMemcpy(h_results, d_results, num_packets * sizeof(int), cudaMemcpyDeviceToHost);
-
-    for (int i = 0; i < num_packets; i++) {
-        if (h_results[i] == 1) {
-            // std::cout << "[GPU] Alert in packet #" << i << " of batch!" << std::endl;
-        }
+    for (int i = 0; i < NUM_STREAMS; ++i) {
+        cudaStreamCreate(&streams[i]);
     }
 
-    cudaFree(d_buffer);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA Error in initialization: " << cudaGetErrorString(err) << std::endl;
+    }
+}
+
+// Hot path: Queue async memory transfers and kernel execution on the current stream.
+// This allows the CPU to immediately return to parsing packets while the GPU works.
+void GPUWorker::launch_gpu_batch_async(
+    const char* host_flat_buffer,
+    const int* host_offsets,
+    const int* host_lengths,
+    int num_packets,
+    int* host_results)
+{
+    if (num_packets == 0) return;
+
+    int total_bytes = host_offsets[num_packets - 1] + host_lengths[num_packets - 1];
+
+    if (total_bytes > max_total_bytes || num_packets > max_batch_packets) {
+        std::cerr << "Error: Batch exceeds pre-allocated GPU memory!" << std::endl;
+        return;
+    }
+
+    int stream_id = current_stream_idx;
+
+    // Calculate the memory offsets for the active double-buffer stream
+    size_t byte_offset = stream_id * max_total_bytes;
+    int packet_offset = stream_id * max_batch_packets;
+
+    cudaMemcpyAsync(d_flat_buffer + byte_offset, host_flat_buffer, total_bytes, cudaMemcpyHostToDevice, streams[stream_id]);
+    cudaMemcpyAsync(d_offsets + packet_offset, host_offsets, num_packets * sizeof(int), cudaMemcpyHostToDevice, streams[stream_id]);
+    cudaMemcpyAsync(d_lengths + packet_offset, host_lengths, num_packets * sizeof(int), cudaMemcpyHostToDevice, streams[stream_id]);
+
+    cudaMemsetAsync(d_results + packet_offset, 0, num_packets * sizeof(int), streams[stream_id]);
+
+    batch_scan_kernel<<<num_packets, 256, 0, streams[stream_id]>>>(
+        d_flat_buffer + byte_offset,
+        d_offsets + packet_offset,
+        d_lengths + packet_offset,
+        d_results + packet_offset
+    );
+
+    cudaMemcpyAsync(host_results, d_results + packet_offset, num_packets * sizeof(int), cudaMemcpyDeviceToHost, streams[stream_id]);
+
+    // Toggle to the next stream for the subsequent batch
+    current_stream_idx = (current_stream_idx + 1) % NUM_STREAMS;
+}
+
+// Block the host thread until all pending async operations across all streams are complete.
+void GPUWorker::synchronize_all() {
+    cudaDeviceSynchronize();
+}
+
+// Free persistent VRAM and destroy streams on shutdown.
+GPUWorker::~GPUWorker() {
+    cudaFree(d_flat_buffer);
     cudaFree(d_offsets);
     cudaFree(d_lengths);
     cudaFree(d_results);
-    delete[] h_results;
+
+    for (int i = 0; i < NUM_STREAMS; ++i) {
+        cudaStreamDestroy(streams[i]);
+    }
 }
