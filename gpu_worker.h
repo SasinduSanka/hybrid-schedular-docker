@@ -12,7 +12,7 @@ private:
     int* d_lengths;
     int* d_results;
 
-    // Execution streams to enable asynchronous double-buffering (H2D, D2H, and Kernel overlap).
+    // Execution streams to enable asynchronous double-buffering.
     static const int NUM_STREAMS = 2;
     cudaStream_t streams[NUM_STREAMS];
 
@@ -28,7 +28,7 @@ public:
     // Free device allocations and destroy streams.
     ~GPUWorker();
 
-    // Hot path: Dispatch the batch asynchronously using the current CUDA stream.
+    // Dispatch the batch asynchronously using the current CUDA stream.
     // Avoids blocking the host thread.
     void launch_gpu_batch_async(
         const char* host_flat_buffer,

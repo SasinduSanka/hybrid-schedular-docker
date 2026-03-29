@@ -23,7 +23,7 @@ endif ()
 find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CUDA_ARCHITECTURES 86)
 
-# Executables (ADDED cpu_worker.cpp HERE)
+# Executables
 add_executable(inspector
         main.cpp
         pcap_reader.cpp

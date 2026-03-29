@@ -35,7 +35,7 @@ int CPUWorker::match_handler(unsigned int id, unsigned long long from, unsigned 
     return 0;
 }
 
-// Hot path: search the incoming packet using our pre-compiled DFA database.
+// Search the incoming packet using our pre-compiled DFA database.
 int CPUWorker::scan_packet(const uint8_t* packet_data, unsigned int length) {
     int match_count = 0;
 

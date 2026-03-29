@@ -3,7 +3,7 @@
 #include <iomanip>
 
 void TerminalDashboard::init() {
-    // \033[2J clears the screen, \033[H moves the cursor to the top-left
+    // Clear the screen and move the cursor to the top-left
     std::cout << "\033[2J\033[H"; 
     std::cout << "========================================================\n";
     std::cout << "  HYBRID CPU/GPU SCHEDULER - LIVE TELEMETRY             \n";
@@ -19,11 +19,11 @@ void TerminalDashboard::update(uint64_t cpu_packets, uint64_t gpu_packets, doubl
         mpps = (total / elapsed_time) / 1000000.0;
     }
 
-    // \033[5;0H moves the cursor to Line 5, Column 0 to overwrite previous data
+    // Move the cursor to overwrite previous data
     std::cout << "\033[5;0H"; 
     
     std::cout << "  Elapsed Time : " << std::fixed << std::setprecision(2) << elapsed_time << " s\n";
-    // \033[1;32m turns the text bold green, \033[0m resets it
+    // Bold green text, reset at end
     std::cout << "  Current Speed: " << "\033[1;32m" << mpps << " Mpps" << "\033[0m\n\n"; 
 
     std::cout << "  --- Routing Distribution ---\n";

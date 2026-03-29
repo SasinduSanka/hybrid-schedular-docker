@@ -1,8 +1,8 @@
 #include "scheduler.h"
 #include <cstring>
 
-// Allocate pinned memory (cudaHostAlloc) to allow zero-copy, high-speed DMA transfers to the GPU.
-// allocate 2x the max capacity to support double buffering across two async streams.
+// Allocate pinned memory to allow zero-copy, high-speed DMA transfers to the GPU.
+// Allocate 2x the max capacity to support double buffering across two async streams.
 Scheduler::Scheduler() {
     cpu_worker = new CPUWorker("G");
     gpu_worker = new GPUWorker(MAX_BATCH_SIZE, MAX_BATCH_BYTES);
@@ -31,12 +31,12 @@ void Scheduler::init() {
 void Scheduler::dispatch(char* packet_data, int packet_len) {
     if (packet_len >= 50) {
 
-        // Safety bound: Force an early flush if the current packet exceeds our VRAM byte limit.
+        // Force an early flush if the current packet exceeds our VRAM byte limit.
         if (current_batch_bytes + packet_len > MAX_BATCH_BYTES) {
             flush_batch();
         }
 
-        // Double-buffering: Calculate offsets to fill the idle stream's buffer
+        // Calculate offsets to fill the idle stream's buffer
         // while the GPU actively reads from the other stream's buffer.
         size_t byte_offset = (stream_toggle * MAX_BATCH_BYTES) + current_batch_bytes;
         int pkt_offset = (stream_toggle * MAX_BATCH_SIZE) + current_batch_count;
@@ -77,7 +77,7 @@ void Scheduler::flush_batch() {
         host_results + base_pkt_offset
     );
 
-    // Reset batch state and toggle the active stream index (0 -> 1, or 1 -> 0).
+    // Reset batch state and toggle the active stream index.
     current_batch_count = 0;
     current_batch_bytes = 0;
     stream_toggle = (stream_toggle + 1) % 2;

@@ -2,7 +2,7 @@
 #include <iostream>
 #include "gpu_worker.h"
 
-// CUDA Kernel: Each block processes one packet.
+// Each block processes one packet.
 // Threads within the block cooperatively scan the payload in parallel to maximize throughput.
 __global__ void batch_scan_kernel(char* all_data, int* offsets, int* lengths, int* results) {
     int packet_idx = blockIdx.x;
@@ -41,7 +41,7 @@ GPUWorker::GPUWorker(int batch_capacity, size_t max_bytes_per_batch) {
     }
 }
 
-// Hot path: Queue async memory transfers and kernel execution on the current stream.
+// Queue async memory transfers and kernel execution on the current stream.
 // This allows the CPU to immediately return to parsing packets while the GPU works.
 void GPUWorker::launch_gpu_batch_async(
     const char* host_flat_buffer,
