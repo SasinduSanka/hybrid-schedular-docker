@@ -3,13 +3,22 @@
 
 #include <vector>
 
-// void launch_gpu_inspection(char* packet_data, int packet_len);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern "C" void launch_gpu_batch(
+void init_gpu(int max_batch_size, int max_buffer_size);
+void cleanup_gpu();
+
+void launch_gpu_batch(
     char* flat_buffer, 
     int* offsets, 
     int* lengths, 
     int num_packets
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

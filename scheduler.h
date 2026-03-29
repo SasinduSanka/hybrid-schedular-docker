@@ -9,7 +9,8 @@
 class Scheduler {
 public:
     Scheduler();
-    
+    ~Scheduler();
+
     void init();
     void dispatch(char* packet_data, int packet_len);
     

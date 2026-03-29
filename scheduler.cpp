@@ -6,10 +6,16 @@ Scheduler::Scheduler() {
     batch_lengths.reserve(32);
 }
 
+Scheduler::~Scheduler() {
+    cleanup_gpu();
+}
+
 void Scheduler::init() {
     if (!cpu_worker.init_pattern(".")) {
         std::cerr << "[Scheduler] Failed to init CPU worker." << std::endl;
     }
+    // Pre-allocate GPU memory: Max batch size = BATCH_SIZE, Max buffer size = 1024 * 32 * 2
+    init_gpu(BATCH_SIZE, 1024 * 32 * 2);
 }
 
 void Scheduler::dispatch(char* packet_data, int packet_len) {
