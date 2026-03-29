@@ -2,8 +2,11 @@
 #include <vector>
 #include <chrono>
 #include <iomanip>
+#include <atomic>
+#include <thread>
 #include "scheduler.h"
 #include "pcap_reader.h"
+#include "terminal_dashboard.h"
 
 #define BURST_SIZE 32
 
@@ -26,10 +29,28 @@ int main(int argc, char** argv) {
     Scheduler scheduler;
     scheduler.init();
 
-    std::cout << "[System] Starting Benchmark on " << pcap_file << "..." << std::endl;
-    
-    uint64_t total_packets = 0;
+    TerminalDashboard dashboard;
+    dashboard.init();
+
+    std::atomic<bool> is_processing{true};
     auto start_time = std::chrono::high_resolution_clock::now();
+
+    std::thread telemetry_thread([&]() {
+        while (is_processing) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            auto current_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = current_time - start_time;
+
+            dashboard.update(
+                scheduler.get_cpu_packets(),
+                scheduler.get_gpu_packets(),
+                elapsed.count()
+            );
+        }
+    });
+
+    uint64_t total_packets = 0;
+    start_time = std::chrono::high_resolution_clock::now();
 
     while (true) {
         std::vector<Packet> batch = reader.nextBatch(BURST_SIZE);
@@ -52,23 +73,23 @@ int main(int argc, char** argv) {
     scheduler.finish();
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end_time - start_time;
-    double seconds = elapsed.count();
-    double mpps = 0.0;
-    if (seconds > 0) {
-        mpps = (total_packets / 1000000.0) / seconds;
-    }
 
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "          BENCHMARK RESULTS             " << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << " Total Packets : " << total_packets << std::endl;
-    std::cout << " CPU Processed : " << scheduler.get_cpu_packets() << std::endl;
-    std::cout << " GPU Processed : " << scheduler.get_gpu_packets() << std::endl;
-    std::cout << " Total Time    : " << std::fixed << std::setprecision(4) << seconds << " seconds" << std::endl;
-    std::cout << "----------------------------------------" << std::endl;
-    std::cout << " AVERAGE SPEED : " << std::fixed << std::setprecision(3) << mpps << " Mpps" << std::endl;
-    std::cout << "========================================" << std::endl;
+    // 2. Stop the telemetry thread safely
+    is_processing = false;
+    telemetry_thread.join();
+
+    // 3. One final draw to ensure the dashboard shows the exact final numbers
+
+    std::chrono::duration<double> final_elapsed = end_time - start_time;
+
+    dashboard.update(
+        scheduler.get_cpu_packets(),
+        scheduler.get_gpu_packets(),
+        final_elapsed.count()
+    );
+
+    // 4. Move the terminal cursor down so the shell prompt doesn't overwrite the UI
+    std::cout << "\n\n\n\n\n\n";
 
     return 0;
 }

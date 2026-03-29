@@ -15,34 +15,35 @@ pkg_check_modules(PCAP REQUIRED libpcap)
 # Hyperscan
 find_path(HYPERSCAN_INCLUDE_DIR hs/hs.h)
 find_library(HYPERSCAN_LIBRARY NAMES hs hyperscan)
-if(NOT HYPERSCAN_LIBRARY)
+if (NOT HYPERSCAN_LIBRARY)
     message(FATAL_ERROR "Hyperscan library not found! Ensure libhyperscan-dev is installed.")
-endif()
+endif ()
 
 # CUDA
 find_package(CUDAToolkit REQUIRED)
-set(CMAKE_CUDA_ARCHITECTURES 86) 
+set(CMAKE_CUDA_ARCHITECTURES 86)
 
 # Executables (ADDED cpu_worker.cpp HERE)
-add_executable(inspector 
-    main.cpp 
-    pcap_reader.cpp 
-    scheduler.cpp 
-    cpu_worker.cpp
-    gpu_worker.cu 
+add_executable(inspector
+        main.cpp
+        pcap_reader.cpp
+        scheduler.cpp
+        cpu_worker.cpp
+        gpu_worker.cu
+        terminal_dashboard.cpp
 )
 
 # Link Libraries
 target_link_libraries(inspector
-    PRIVATE
-    ${PCAP_LIBRARIES}
-    ${HYPERSCAN_LIBRARY}
-    CUDA::cudart
-    pthread
+        PRIVATE
+        ${PCAP_LIBRARIES}
+        ${HYPERSCAN_LIBRARY}
+        CUDA::cudart
+        pthread
 )
 
 # Include Directories
 target_include_directories(inspector PUBLIC
-    ${PCAP_INCLUDE_DIRS}
-    ${HYPERSCAN_INCLUDE_DIR}
+        ${PCAP_INCLUDE_DIRS}
+        ${HYPERSCAN_INCLUDE_DIR}
 )
