@@ -2,24 +2,22 @@
 #define CPU_WORKER_H
 
 #include <hs/hs.h>
-#include <iostream>
+#include <cstdint>
 #include <string>
 
-class CpuWorker {
-public:
-    CpuWorker();
-    ~CpuWorker();
-
-    bool init_pattern(const char* pattern);
-
-    bool scan_packet(const char* data, int len);
-
+class CPUWorker {
 private:
-    hs_database_t* database = nullptr;
-    hs_scratch_t* scratch = nullptr;
+    hs_database_t* database;
+    hs_scratch_t* scratch;
 
-    static int onMatch(unsigned int id, unsigned long long from,
-                       unsigned long long to, unsigned int flags, void* ctx);
+    static int match_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context);
+
+public:
+    // Initialize with a specific regex rule
+    CPUWorker(const char* pattern);
+    ~CPUWorker();
+
+    int scan_packet(const uint8_t* packet_data, unsigned int length);
 };
 
 #endif
